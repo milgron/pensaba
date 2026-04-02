@@ -1,0 +1,22 @@
+{
+  "name": "pensaba",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "packageManager": "pnpm@10.18.3",
+  "dependencies": {
+    "@chenglou/pretext": "^0.0.4",
+    "@supabase/supabase-js": "^2.101.1",
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.128.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3"
+  }
+}
