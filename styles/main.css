@@ -33,6 +33,15 @@ html, body {
   pointer-events: auto;
 }
 
+/* Turnstile widget slot, shown only while a captcha needs interaction */
+.captcha-slot {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
 /* Onboarding */
 .onboarding-overlay {
   position: fixed;

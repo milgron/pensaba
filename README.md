@@ -233,8 +233,10 @@ report-only mode so it can be watched in the browser console before enforcing.
   payload is validated in `src/realtime/validate.ts` before it reaches the
   renderer.
 - Anonymous sign-in means the quota is per browser identity, not per person.
-  Enable captcha for anonymous sign-ins in the Supabase dashboard to make
-  creating identities expensive.
+  A Cloudflare Turnstile token is obtained on first visit
+  (`src/realtime/captcha.ts`) and sent with `signInAnonymously()`; enable
+  "Captcha protection" with the Turnstile secret in the Supabase dashboard so
+  the token is actually verified.
 
 ---
 

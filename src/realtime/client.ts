@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { state } from '../state';
+import { getCaptchaToken } from './captcha';
 
 let supabase: SupabaseClient | null = null;
 
@@ -21,7 +22,11 @@ export async function initSupabase(): Promise<SupabaseClient | null> {
   // Sign in anonymously
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    const { data, error } = await supabase.auth.signInAnonymously();
+    const uiRoot = document.getElementById('ui-root') as HTMLElement;
+    const captchaToken = await getCaptchaToken(uiRoot);
+    const { data, error } = await supabase.auth.signInAnonymously({
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) {
       console.warn('Anonymous auth failed:', error.message);
       return null;
