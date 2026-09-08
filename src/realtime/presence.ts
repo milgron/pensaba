@@ -3,6 +3,7 @@ import { state } from '../state';
 import { bus } from '../events';
 import { TUBE_RADIUS } from '../tunnel/tube';
 import type { CursorState } from '../types';
+import { parseCursorPayload, parsePresenceEntry } from './validate';
 
 let channel: RealtimeChannel | null = null;
 let presenceInterval: ReturnType<typeof setInterval> | null = null;
@@ -33,24 +34,25 @@ export function initPresence(supabase: SupabaseClient): void {
     // Add new users from presence, preserve position from broadcast
     for (const [key, entries] of Object.entries(presenceState)) {
       if (key === state.userId) continue;
-      const entry = (entries as any[])[0];
-      if (!entry) continue;
+      const raw = (entries as unknown[])[0];
+      if (!raw) continue;
+      const entry = parsePresenceEntry(raw);
 
       const existing = state.cursors.get(key);
       if (existing) {
         // Update online info but keep position from broadcast
-        existing.nickname = entry.nickname || 'anon';
-        existing.color = entry.color || '#ffffff';
+        existing.nickname = entry.nickname;
+        existing.color = entry.color;
         existing.lastSeen = now;
       } else {
         // New user — create entry
         state.cursors.set(key, {
           userId: key,
-          nickname: entry.nickname || 'anon',
+          nickname: entry.nickname,
           t: 0,
           ox: 0,
           oy: 0,
-          color: entry.color || '#ffffff',
+          color: entry.color,
           lastSeen: now,
         });
       }
@@ -68,13 +70,14 @@ export function initPresence(supabase: SupabaseClient): void {
 
   // --- Broadcast: cursor position (high frequency) ---
   channel.on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
-    if (!payload || payload.userId === state.userId) return;
+    const parsed = parseCursorPayload(payload);
+    if (!parsed || parsed.userId === state.userId) return;
 
-    const existing = state.cursors.get(payload.userId);
+    const existing = state.cursors.get(parsed.userId);
     if (existing) {
-      existing.t = payload.t ?? existing.t;
-      existing.ox = payload.ox ?? existing.ox;
-      existing.oy = payload.oy ?? existing.oy;
+      existing.t = parsed.t;
+      existing.ox = parsed.ox;
+      existing.oy = parsed.oy;
       existing.lastSeen = Date.now();
     }
   });

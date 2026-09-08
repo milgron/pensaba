@@ -2,6 +2,7 @@ import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { state } from '../state';
 import { bus } from '../events';
 import type { TypingState } from '../types';
+import { parseTypingPayload, parseTypingStopPayload } from './validate';
 
 let channel: RealtimeChannel | null = null;
 const THROTTLE_MS = 200;
@@ -15,25 +16,18 @@ export function initLiveTyping(supabase: SupabaseClient): void {
   channel = supabase.channel('typing');
 
   channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
-    if (!payload || payload.userId === state.userId) return;
+    const parsed = parseTypingPayload(payload);
+    if (!parsed || parsed.userId === state.userId) return;
 
-    const typing: TypingState = {
-      userId: payload.userId,
-      nickname: payload.nickname || 'anon',
-      text: (payload.text || '').slice(0, 50),
-      t: payload.t ?? 0,
-      ox: payload.ox ?? 0,
-      oy: payload.oy ?? 0,
-      lastUpdate: Date.now(),
-    };
-
+    const typing: TypingState = { ...parsed, lastUpdate: Date.now() };
     state.typingUsers.set(typing.userId, typing);
     bus.emit('typing:updated', undefined);
   });
 
   channel.on('broadcast', { event: 'typing_stop' }, ({ payload }) => {
-    if (!payload) return;
-    state.typingUsers.delete(payload.userId);
+    const userId = parseTypingStopPayload(payload);
+    if (!userId) return;
+    state.typingUsers.delete(userId);
     bus.emit('typing:updated', undefined);
   });
 

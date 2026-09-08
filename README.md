@@ -171,6 +171,11 @@ src/
 supabase/migrations/
   001_create_thoughts.sql    # Schema, RLS, rate-limit function
   002_create_admin.sql       # Admin users, permissions
+  003_harden_security.sql    # RLS on admin_users, single write path, input bounds
+
+supabase/tests/
+  rls.test.sql               # Security invariants (RLS, rate limit, bounds)
+  run.sh                     # Runs them against a throwaway Postgres in Docker
 ```
 
 ---
@@ -195,13 +200,41 @@ Runs at `http://localhost:5173`. Works in local-only mode without Supabase (show
    ```
 4. Restart dev server
 
+### Tests
+
+```bash
+pnpm test        # client-side unit tests (vitest)
+pnpm test:db     # database security tests (needs Docker)
+```
+
+`pnpm test:db` boots the official Supabase Postgres image, applies every
+migration, and checks the invariants in `supabase/tests/rls.test.sql`: only
+`insert_thought()` can write, one thought per user per day, geometry and text
+bounds, admin-only soft-delete, and `admin_users` unreachable from the API.
+Add a test there before changing a policy or a constraint.
+
 ### Build
 
 ```bash
 pnpm build
 ```
 
-Outputs to `dist/`. Deploy as static files.
+Runs the type check and unit tests, then outputs to `dist/`. Deploy as static
+files. `vercel.json` adds security headers; the Content-Security-Policy is in
+report-only mode so it can be watched in the browser console before enforcing.
+
+### Security model
+
+- The anon key is public. Every guarantee lives in Postgres: RLS policies and
+  check constraints, exercised by `pnpm test:db`.
+- The only write path is the `insert_thought()` RPC, which enforces the daily
+  quota. There is no INSERT policy on `thoughts`.
+- Realtime broadcast and presence channels are open to any client, so every
+  payload is validated in `src/realtime/validate.ts` before it reaches the
+  renderer.
+- Anonymous sign-in means the quota is per browser identity, not per person.
+  Enable captcha for anonymous sign-ins in the Supabase dashboard to make
+  creating identities expensive.
 
 ---
 
